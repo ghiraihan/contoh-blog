@@ -1,40 +1,18 @@
 const express = require('express');
-const { Client } = require('pg');
+const methodOverride = require('method-override');
 const PORT = 3555;
 
 const app = express();
+const client = require('./models/init');
+app.set('view engine', 'ejs');
+app.use(express.static('public'));
 app.use(express.urlencoded());
-
-// CONFIG DATABASE
-const client = new Client({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD
-});
-client.connect(function(error) {
-  if(error !== null) {
-    console.log(error)
-  } else {
-    console.log("Connected to database !");
-  }
-})
+app.use(methodOverride('_method'));
 
 // ROUTING
+const articleController = require('./controllers/article_controller')
 // 1. GET LIST API
-app.get('/api/article', async function (req, res) {
-  const rawData = await client.query(`
-      SELECT id, title
-      FROM article
-  `);
-  const data = rawData.rows;
-  const count = rawData.rowCount;
-  res.status(200).json({ 
-    count,
-    data
-   })
-});
+app.get('/api/article', articleController.getListArticle);
 // 2. GET DETAIL API
 app.get('/api/article/detail/:id', async function (req, res) {
   const id = req.params.id;
@@ -44,7 +22,11 @@ app.get('/api/article/detail/:id', async function (req, res) {
       WHERE id = $1
   `, [id]);
   const data = rawData.rows[0];
-  res.status(200).json({ data })
+
+  res.status(200).render('detail/index', {
+    dataArtikel: data,
+    id
+  })
 });
 // 3. INSERT ARTICLE API
 app.post('/api/article/create', async function (req, res) {
@@ -62,7 +44,7 @@ app.post('/api/article/create', async function (req, res) {
     const data = rawData.rows[0];
 
     await client.query('COMMIT');
-    res.status(200).json({ data });
+    res.redirect('/api/article');
   } catch (error) {
     console.log(error);
     await client.query('ROLLBACK');
@@ -95,7 +77,7 @@ app.put('/api/article/update/:id', async function (req, res) {
     const newData = newRawData.rows[0];
 
     await client.query('COMMIT');
-    res.status(200).json({ data: newData })
+    res.redirect('/api/article/detail/' + id);
   } catch (error) {
     console.log(error);
     await client.query('ROLLBACK');
@@ -113,12 +95,25 @@ app.delete('/api/article/delete/:id',async function (req, res) {
         WHERE id = $1
     `, [id]);
     await client.query('COMMIT');
-    res.status(200).json({ id });
+    res.redirect('/api/article')
   } catch (error) {
     console.log(error);
     await client.query('ROLLBACK');
     res.status(500).send('internal server error');
   }
+})
+
+app.get('/api/article/editor', async function (req, res) {
+  const updateId = req.query.update_id;
+
+  const rawData = await client.query(`
+      SELECT title, body
+      FROM article
+      WHERE id = $1
+  `, [updateId]);
+  const data = rawData.rows[0];
+
+  res.status(200).render('editor/index', { updateId, dataArtikel: data })
 })
 
 app.listen(PORT, function () {
