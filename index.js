@@ -25,10 +25,7 @@ app.get('/api/article/detail/:id', async function (req, res) {
   `, [id]);
   const data = rawData.rows[0];
 
-  res.status(200).render('detail/index', {
-    dataArtikel: data,
-    id
-  })
+  res.status(200).json({ data })
 });
 // 3. INSERT ARTICLE API
 app.post('/api/article/create', async function (req, res) {
