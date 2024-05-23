@@ -5,9 +5,7 @@ async function getListArticle(req, res) {
   const data = rawData.rows;
   const count = rawData.rowCount;
 
-  res.status(200).render('landing/index', { 
-    kumpulanArtikel: data 
-  });
+  res.status(200).json({ kumpulanArtikel: data });
 };
 
 module.exports = { getListArticle }
